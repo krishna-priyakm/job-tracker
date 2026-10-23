@@ -13,7 +13,14 @@ export default function ApplicationCard({ application, onMove, onEdit, onDelete 
   const selectId = "status-" + application.id;
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <article
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", application.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      className="cursor-grab rounded-lg border border-slate-200 bg-white p-3 shadow-sm active:cursor-grabbing"
+    >
       <h3 className="font-semibold">{application.company}</h3>
       <p className="text-sm text-slate-600">{application.role}</p>
 

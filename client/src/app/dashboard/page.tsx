@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
-import { Application, Stats, Status, STATUSES, STATUS_LABELS } from "@/lib/types";
+import { Application, Stats, Status, STATUSES } from "@/lib/types";
 import ApplicationCard from "@/components/ApplicationCard";
+import Column from "@/components/Column";
 import ApplicationForm from "@/components/ApplicationForm";
 import StatsBar from "@/components/StatsBar";
 
@@ -75,7 +76,15 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleMove(id: string, status: Status) {
+    async function handleMove(id: string, status: Status) {
+    const current = applications.find((a) => a.id === id);
+    if (!current || current.status === status) {
+      return;
+    }
+
+    // Optimistic update: show the move immediately
+    setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, status: status } : a)));
+
     const res = await apiFetch("/api/applications/" + id, {
       method: "PATCH",
       body: JSON.stringify({ status: status }),
@@ -83,6 +92,7 @@ export default function DashboardPage() {
     if (!res.ok) {
       setError("Could not change the status.");
     }
+    // Reload from the server: confirms the move, or puts the card back if it failed
     await load();
   }
 
@@ -167,31 +177,23 @@ export default function DashboardPage() {
         <p className="mt-8 text-slate-500">Loading applications...</p>
       ) : (
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {STATUSES.map((status) => {
+                    {STATUSES.map((status) => {
             const items = applications.filter((a) => a.status === status);
             return (
-              <section key={status} aria-label={STATUS_LABELS[status]}>
-                <h2 className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-700">
-                  {STATUS_LABELS[status]}
-                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
-                    {items.length}
-                  </span>
-                </h2>
-                <div className="min-h-24 space-y-3 rounded-lg bg-slate-100 p-2">
-                  {items.length === 0 && (
-                    <p className="p-2 text-xs text-slate-400">Nothing here yet</p>
-                  )}
-                  {items.map((a) => (
-                    <ApplicationCard
-                      key={a.id}
-                      application={a}
-                      onMove={handleMove}
-                      onEdit={openEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </section>
+              <Column key={status} status={status} count={items.length} onDropCard={handleMove}>
+                {items.length === 0 && (
+                  <p className="p-2 text-xs text-slate-400">Nothing here yet</p>
+                )}
+                {items.map((a) => (
+                  <ApplicationCard
+                    key={a.id}
+                    application={a}
+                    onMove={handleMove}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </Column>
             );
           })}
         </div>
