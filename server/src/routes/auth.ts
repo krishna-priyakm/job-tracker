@@ -24,6 +24,15 @@ function signAccessToken(userId: string) {
   });
 }
 
+const isProd = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+  secure: isProd,
+  path: "/api/auth",
+};
+
 async function issueRefreshToken(userId: string, res: Response) {
   const token = jwt.sign(
     { sub: userId, jti: crypto.randomUUID() },
@@ -40,11 +49,8 @@ async function issueRefreshToken(userId: string, res: Response) {
   });
 
   res.cookie("refreshToken", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...cookieOptions,
     maxAge: REFRESH_SECONDS * 1000,
-    path: "/api/auth",
   });
 }
 
@@ -123,7 +129,7 @@ router.post("/logout", async (req, res) => {
   if (token) {
     await prisma.refreshToken.deleteMany({ where: { tokenHash: hashToken(token) } });
   }
-  res.clearCookie("refreshToken", { path: "/api/auth" });
+  res.clearCookie("refreshToken", cookieOptions);
   res.json({ ok: true });
 });
 
